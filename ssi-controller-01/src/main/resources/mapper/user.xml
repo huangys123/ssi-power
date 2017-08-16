@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"   
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<!-- sqlMap：映射标签
+	namespace：命名空间
+ -->
+ 
+<sqlMap namespace="user">
+
+	<!-- 为类起别名，使用的时候比较方便 -->
+	 <typeAlias alias="user" type="com.jk.entity.user.User"/>
+	 <typeAlias alias="userRquest" type="com.jk.entity.user.UserRquest"/>
+	 <typeAlias alias="userResponse" type="com.jk.entity.user.UserResponse"/>
+	 
+	 <typeAlias alias="roleRequest" type="com.jk.entity.role.RoleRequest"/>
+	 <typeAlias alias="roleResponse" type="com.jk.entity.role.RoleResponse"/>
+	 
+	 <resultMap class="com.jk.entity.user.UserResponse" id="userResponseMap">
+		<result property="userId" column="t_id"/>
+		<result property="userAccount" column="t_account"/>
+		<result property="userPwd" column="t_passwored"/>
+	</resultMap>
+	 
+	 <!-- 查询列表 分页 -->
+	<select id="selectUserList" parameterClass="userRquest" resultMap="userResponseMap">
+		select u2.* from (
+			select u1.*, rownum as rm from (
+				select t_id,
+					T_ACCOUNT,
+					T_PASSWORED
+				from t_users u
+			) u1
+			where rownum <![CDATA[<=]]> #endPos#
+		) u2
+		where u2.rm >= #startPos#
+	</select> 
+	
+	
+	<!-- 添加用户 -->
+	  <insert id="insertUser" parameterClass="user">
+		insert into t_users
+			(t_id,t_account,t_passwored)
+			values
+		(T_U_R_MID_SEQ.nextval,#userAccount#,#userPwd#)
+	</insert> 
+	
+	
+	<!-- 用户登录 -->
+	<select id="loginUser" parameterClass="userRquest" resultClass="userResponse">
+		select t_id as "userId",
+			t_account as "userAccount",
+			t_passwored as "userPwd",
+			t_login_fail_num as "loginFailNum",
+			(sysDate - t_login_fail_date)* 24 * 60 * 60 * 1000 as "loginFailDate"
+		from t_users
+		where t_account = #userAccount#
+	</select>
+	
+	
+	<!-- 修改登录失败的次数-->
+	<update id="updateLoginFailNum">
+		update t_users 
+		set t_login_Fail_Num = #loginFailNum#,
+		t_login_fail_date = sysDate
+		where t_account = #userAccount#
+	</update>
+	
+	<!-- 查询用户角色列表 -->
+	<select id="selectUserRoleListJson" parameterClass="roleRequest" resultClass="roleResponse">
+		select r.t_id as "id", 
+			r.t_name as "name", 
+			NVL2(m1.t_role_id, 1, 0) as "checked" 
+			from t_roles r
+		left join (select m.t_role_id from t_u_r_mid m where m.t_user_id = #userId#) m1
+		on r.t_id = m1.t_role_id
+		order by r.t_id
+	</select>
+	
+	<!-- 删除用户所有的角色 -->
+	<delete id="deleteAllRolesByUserID" parameterClass="roleRequest">
+		delete from t_u_r_mid
+		where t_user_id = #userId#
+	</delete>
+	
+	<!-- 添加用户的角色 -->
+	<insert id="insertUserRole" parameterClass="roleRequest">
+		insert into t_u_r_mid
+		(t_id, t_user_id, t_role_id)
+		values
+		(T_U_R_MID_SEQ.nextval, #userId#, #roleId#)
+	</insert>
+	
+	<!-- 查询用户总条数 -->
+	<select id="selectUserCount" parameterClass="userRquest" resultClass="int">
+		select count(1) from t_users
+	</select>
+	
+	
+	
+	<!-- 删除 -->
+	<!-- <delete id="deleteUser" parameterClass="Integer">
+		delete from u_user where u_id=#userId#
+	</delete> -->
+	
+	
+	<!-- 修改前的回显 -->
+	<!-- <select id="selectUserById" resultClass="user">
+		select u_id as userId, 
+			u_name as userName,
+			u_password as userPassrwod
+		from u_user
+		where u_id=#userId#
+	</select> -->
+	
+	
+	<!-- 修改 -->
+	<!-- <update id="updateUser" parameterClass="user">
+		update u_user set 
+		u_name=#userName#,
+		u_password=#userPassword#
+		where u_id=#userId#
+	</update>  -->
+</sqlMap>
